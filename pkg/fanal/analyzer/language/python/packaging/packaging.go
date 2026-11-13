@@ -1,7 +1,9 @@
 package packaging
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"io/fs"
@@ -131,7 +133,7 @@ func (a packagingAnalyzer) pep770Apps(ctx context.Context, fsys fs.FS, sbomDir s
 			continue
 		}
 		sbomPath := path.Join(sbomDir, entry.Name())
-		sbomApps, err := decodeSBOM(ctx, fsys, sbomPath)
+		sbomApps, excluded, err := decodeSBOM(ctx, fsys, sbomPath)
 		if err != nil {
 			a.logger.Warn("Unable to parse PEP 770 SBOM", log.FilePath(sbomPath), log.Err(err))
 			continue
@@ -142,10 +144,9 @@ func (a packagingAnalyzer) pep770Apps(ctx context.Context, fsys fs.FS, sbomDir s
 			}
 			// ponytail: SBOM path as FilePath => one result per SBOM file; revisit if that is too noisy.
 			app.FilePath = sbomPath
-			// BOM refs from third-party SBOMs collide between wheels (same crate in two SBOMs),
-			// which yields duplicate bom-refs in Trivy's CycloneDX output and breaks the round trip.
-			for i := range app.Packages {
-				app.Packages[i].Identifier.BOMRef = ""
+			app.Packages = filterCrates(app.Packages, excluded)
+			if len(app.Packages) == 0 {
+				continue
 			}
 			apps = append(apps, app)
 		}
@@ -153,31 +154,69 @@ func (a packagingAnalyzer) pep770Apps(ctx context.Context, fsys fs.FS, sbomDir s
 	return apps
 }
 
-func decodeSBOM(ctx context.Context, fsys fs.FS, sbomPath string) ([]types.Application, error) {
-	f, err := fsys.Open(sbomPath)
-	if err != nil {
-		return nil, xerrors.Errorf("file open error: %w", err)
+// filterCrates drops crates that are not part of the shipped binary as far as the SBOM can tell:
+//   - build dependencies: cargo-cyclonedx marks them with `scope: excluded`
+//   - first-party crates (the root crate and workspace members): `download_url=file://...`,
+//     they are not published to crates.io, so matching them by name can only produce false positives.
+//
+// ponytail: proc-macro and other-target crates (e.g. wasm-bindgen in a Linux wheel) stay,
+// the SBOM doesn't distinguish them (maturin generates for all targets).
+func filterCrates(pkgs types.Packages, excluded map[string]struct{}) types.Packages {
+	kept := lo.Filter(pkgs, func(pkg types.Package, _ int) bool {
+		if _, ok := excluded[pkg.Identifier.BOMRef]; ok {
+			return false
+		}
+		if p := pkg.Identifier.PURL; p != nil && strings.HasPrefix(p.Qualifiers.Map()["download_url"], "file://") {
+			return false
+		}
+		return true
+	})
+	ids := lo.SliceToMap(kept, func(pkg types.Package) (string, struct{}) { return pkg.ID, struct{}{} })
+	for i := range kept {
+		kept[i].DependsOn = xslices.ZeroToNil(lo.Filter(kept[i].DependsOn, func(id string, _ int) bool {
+			_, ok := ids[id]
+			return ok
+		}))
+		// BOM refs from third-party SBOMs collide between wheels (same crate in two SBOMs),
+		// which yields duplicate bom-refs in Trivy's CycloneDX output and breaks the round trip.
+		kept[i].Identifier.BOMRef = ""
 	}
-	defer f.Close()
+	return kept
+}
 
-	rs, ok := f.(io.ReadSeeker)
-	if !ok {
-		return nil, xerrors.New("invalid reader")
+// decodeSBOM returns the applications of the SBOM and the BOM refs of components with `scope: excluded`.
+func decodeSBOM(ctx context.Context, fsys fs.FS, sbomPath string) ([]types.Application, map[string]struct{}, error) {
+	content, err := fs.ReadFile(fsys, sbomPath)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("file read error: %w", err)
 	}
 
 	// Detect by content: PEP 770 doesn't mandate file names (e.g. cargo-cyclonedx writes `*.cyclonedx.json`)
-	format, err := sbom.DetectFormat(rs)
+	format, err := sbom.DetectFormat(bytes.NewReader(content))
 	if err != nil {
-		return nil, xerrors.Errorf("failed to detect SBOM format: %w", err)
+		return nil, nil, xerrors.Errorf("failed to detect SBOM format: %w", err)
 	}
-	if _, err = rs.Seek(0, io.SeekStart); err != nil {
-		return nil, xerrors.Errorf("seek error: %w", err)
-	}
-	bom, err := sbom.Decode(ctx, rs, format)
+	bom, err := sbom.Decode(ctx, bytes.NewReader(content), format)
 	if err != nil {
-		return nil, xerrors.Errorf("SBOM decode error: %w", err)
+		return nil, nil, xerrors.Errorf("SBOM decode error: %w", err)
 	}
-	return bom.Applications, nil
+
+	// ponytail: Trivy's CycloneDX decoder drops `scope`, so read it from the raw JSON here.
+	// Move into the decoder if maintainers want scope handled for all SBOMs.
+	var raw struct {
+		Components []struct {
+			BOMRef string `json:"bom-ref"`
+			Scope  string `json:"scope"`
+		} `json:"components"`
+	}
+	_ = json.Unmarshal(content, &raw) // Not CycloneDX JSON => nothing to exclude
+	excluded := make(map[string]struct{})
+	for _, c := range raw.Components {
+		if c.Scope == "excluded" {
+			excluded[c.BOMRef] = struct{}{}
+		}
+	}
+	return bom.Applications, excluded, nil
 }
 
 type fileOpener func(filePath string) (io.ReadCloser, error)

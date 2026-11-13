@@ -234,6 +234,6 @@ func Test_packagingAnalyzer_PEP770(t *testing.T) {
 		ids = append(ids, pkg.ID)
 		assert.Empty(t, pkg.Identifier.BOMRef)
 	}
-	// ponytail: `cc` is a build dependency (scope: excluded) and `orjson` is the root crate; both are still reported.
-	assert.Equal(t, []string{"cc@1.6.0", "libc@0.2.190", "orjson@3.13.0"}, ids)
+	// `cc` (build dependency, scope: excluded) and `orjson` (root crate, download_url=file://.) are dropped.
+	assert.Equal(t, []string{"libc@0.2.190"}, ids)
 }

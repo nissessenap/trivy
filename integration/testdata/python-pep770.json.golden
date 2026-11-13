@@ -31,19 +31,6 @@
       "Type": "cargo",
       "Packages": [
         {
-          "ID": "cc@1.6.0",
-          "Name": "cc",
-          "Identifier": {
-            "PURL": "pkg:cargo/cc@1.6.0",
-            "UID": "6b4f6472b60c603b"
-          },
-          "Version": "1.6.0",
-          "Licenses": [
-            "MIT OR Apache-2.0"
-          ],
-          "AnalyzedBy": "python-pkg"
-        },
-        {
           "ID": "libc@0.2.190",
           "Name": "libc",
           "Identifier": {
@@ -53,22 +40,6 @@
           "Version": "0.2.190",
           "Licenses": [
             "MIT OR Apache-2.0"
-          ],
-          "AnalyzedBy": "python-pkg"
-        },
-        {
-          "ID": "orjson@3.13.0",
-          "Name": "orjson",
-          "Identifier": {
-            "PURL": "pkg:cargo/orjson@3.13.0?download_url=file:%2F%2F.",
-            "UID": "e15198b72c3d3b39"
-          },
-          "Version": "3.13.0",
-          "Licenses": [
-            "MPL-2.0 AND (Apache-2.0 OR MIT)"
-          ],
-          "DependsOn": [
-            "cc@1.6.0"
           ],
           "AnalyzedBy": "python-pkg"
         }
