@@ -207,3 +207,33 @@ func Test_packagingAnalyzer_Required(t *testing.T) {
 		})
 	}
 }
+
+// PEP 770: cargo crates from `<name>.dist-info/sboms/` are reported as a separate cargo application.
+func Test_packagingAnalyzer_PEP770(t *testing.T) {
+	a, err := newPackagingAnalyzer(analyzer.AnalyzerOptions{})
+	require.NoError(t, err)
+	got, err := a.PostAnalyze(t.Context(), analyzer.PostAnalysisInput{
+		FS: os.DirFS("testdata/pep770-sboms"),
+	})
+	require.NoError(t, err)
+	require.Len(t, got.Applications, 2)
+
+	// The Python package is not touched
+	py := got.Applications[0]
+	assert.Equal(t, types.PythonPkg, py.Type)
+	assert.Equal(t, "orjson-3.13.0.dist-info/METADATA", py.FilePath)
+	require.Len(t, py.Packages, 1)
+	assert.Empty(t, py.Packages[0].DependsOn)
+
+	cargo := got.Applications[1]
+	assert.Equal(t, types.Cargo, cargo.Type)
+	assert.Equal(t, "orjson-3.13.0.dist-info/sboms/orjson.cyclonedx.json", cargo.FilePath)
+
+	var ids []string
+	for _, pkg := range cargo.Packages {
+		ids = append(ids, pkg.ID)
+		assert.Empty(t, pkg.Identifier.BOMRef)
+	}
+	// `cc` (build dependency, scope: excluded) and `orjson` (root crate, download_url=file://.) are dropped.
+	assert.Equal(t, []string{"libc@0.2.190"}, ids)
+}

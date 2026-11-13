@@ -1,0 +1,49 @@
+{
+  "SchemaVersion": 2,
+  "Trivy": {
+    "Version": "dev"
+  },
+  "ReportID": "017b7d41-e09f-7000-80ea-000000000001",
+  "CreatedAt": "2021-08-25T12:20:30.000000005Z",
+  "ArtifactName": "testdata/fixtures/repo/python-pep770",
+  "ArtifactType": "filesystem",
+  "Results": [
+    {
+      "Target": "Python",
+      "Class": "lang-pkgs",
+      "Type": "python-pkg",
+      "Packages": [
+        {
+          "Name": "orjson",
+          "Identifier": {
+            "PURL": "pkg:pypi/orjson@3.13.0",
+            "UID": "41b3e9e88c410112"
+          },
+          "Version": "3.13.0",
+          "FilePath": "site-packages/orjson-3.13.0.dist-info/METADATA",
+          "AnalyzedBy": "python-pkg"
+        }
+      ]
+    },
+    {
+      "Target": "site-packages/orjson-3.13.0.dist-info/sboms/orjson.cyclonedx.json",
+      "Class": "lang-pkgs",
+      "Type": "cargo",
+      "Packages": [
+        {
+          "ID": "libc@0.2.190",
+          "Name": "libc",
+          "Identifier": {
+            "PURL": "pkg:cargo/libc@0.2.190",
+            "UID": "14151b324e4d0b19"
+          },
+          "Version": "0.2.190",
+          "Licenses": [
+            "MIT OR Apache-2.0"
+          ],
+          "AnalyzedBy": "python-pkg"
+        }
+      ]
+    }
+  ]
+}
