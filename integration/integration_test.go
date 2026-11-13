@@ -100,6 +100,7 @@ const (
 
 	// Repository/Filesystem tests (repo_test.go, config_test.go)
 	goldenBun                                    = "testdata/bun.json.golden"
+	goldenPythonPEP770                           = "testdata/python-pep770.json.golden"
 	goldenCargoLock                              = "testdata/cargo.lock.json.golden"
 	goldenCocoaPods                              = "testdata/cocoapods.json.golden"
 	goldenComposerLock                           = "testdata/composer.lock.json.golden"

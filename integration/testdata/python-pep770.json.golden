@@ -1,0 +1,78 @@
+{
+  "SchemaVersion": 2,
+  "Trivy": {
+    "Version": "dev"
+  },
+  "ReportID": "017b7d41-e09f-7000-80ea-000000000001",
+  "CreatedAt": "2021-08-25T12:20:30.000000005Z",
+  "ArtifactName": "testdata/fixtures/repo/python-pep770",
+  "ArtifactType": "filesystem",
+  "Results": [
+    {
+      "Target": "Python",
+      "Class": "lang-pkgs",
+      "Type": "python-pkg",
+      "Packages": [
+        {
+          "Name": "orjson",
+          "Identifier": {
+            "PURL": "pkg:pypi/orjson@3.13.0",
+            "UID": "41b3e9e88c410112"
+          },
+          "Version": "3.13.0",
+          "FilePath": "site-packages/orjson-3.13.0.dist-info/METADATA",
+          "AnalyzedBy": "python-pkg"
+        }
+      ]
+    },
+    {
+      "Target": "site-packages/orjson-3.13.0.dist-info/sboms/orjson.cyclonedx.json",
+      "Class": "lang-pkgs",
+      "Type": "cargo",
+      "Packages": [
+        {
+          "ID": "cc@1.6.0",
+          "Name": "cc",
+          "Identifier": {
+            "PURL": "pkg:cargo/cc@1.6.0",
+            "UID": "6b4f6472b60c603b"
+          },
+          "Version": "1.6.0",
+          "Licenses": [
+            "MIT OR Apache-2.0"
+          ],
+          "AnalyzedBy": "python-pkg"
+        },
+        {
+          "ID": "libc@0.2.190",
+          "Name": "libc",
+          "Identifier": {
+            "PURL": "pkg:cargo/libc@0.2.190",
+            "UID": "14151b324e4d0b19"
+          },
+          "Version": "0.2.190",
+          "Licenses": [
+            "MIT OR Apache-2.0"
+          ],
+          "AnalyzedBy": "python-pkg"
+        },
+        {
+          "ID": "orjson@3.13.0",
+          "Name": "orjson",
+          "Identifier": {
+            "PURL": "pkg:cargo/orjson@3.13.0?download_url=file:%2F%2F.",
+            "UID": "e15198b72c3d3b39"
+          },
+          "Version": "3.13.0",
+          "Licenses": [
+            "MPL-2.0 AND (Apache-2.0 OR MIT)"
+          ],
+          "DependsOn": [
+            "cc@1.6.0"
+          ],
+          "AnalyzedBy": "python-pkg"
+        }
+      ]
+    }
+  ]
+}
