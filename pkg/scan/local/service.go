@@ -211,6 +211,10 @@ func (s Service) scanVulnerabilities(ctx context.Context, target types.ScanTarge
 	}
 
 	if slices.Contains(options.PkgTypes, types.PkgTypeLibrary) {
+		var bundled types.Results
+		bundled, target.Applications = s.scanBundledOSPkgs(ctx, target.Applications, options)
+		results = append(results, bundled...)
+
 		vulns, err := s.langPkgScanner.Scan(ctx, target, options)
 		if err != nil {
 			return nil, false, xerrors.Errorf("failed to scan application libraries: %w", err)
