@@ -100,9 +100,12 @@ var OSTypeAliases = map[OSType]OSType{
 
 // Programming language dependencies
 const (
-	Bundler        LangType = "bundler"
-	GemSpec        LangType = "gemspec"
-	Cargo          LangType = "cargo"
+	Bundler LangType = "bundler"
+	GemSpec LangType = "gemspec"
+	Cargo   LangType = "cargo"
+	// BundledOSPkgs is for OS packages that a language package ships copies of,
+	// e.g. the libraries auditwheel vendors into a Python wheel. PoC name.
+	BundledOSPkgs  LangType = "bundled-os-pkgs"
 	Composer       LangType = "composer"
 	ComposerVendor LangType = "composer-vendor"
 	Npm            LangType = "npm"

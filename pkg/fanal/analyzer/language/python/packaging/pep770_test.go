@@ -166,7 +166,7 @@ func Test_packagingAnalyzer_PEP770(t *testing.T) {
 			},
 		},
 		{
-			name: "components other than crates are ignored",
+			name: "bundled OS packages get their own application, other components are ignored",
 			files: fstest.MapFS{
 				orjsonMetadataPath: {Data: []byte(orjsonMetadata)},
 				orjsonSBOMPath: {Data: []byte(`{
@@ -192,6 +192,30 @@ func Test_packagingAnalyzer_PEP770(t *testing.T) {
 					FilePath: orjsonSBOMPath,
 					Packages: types.Packages{
 						crate(orjsonSBOMPath, "libc", "0.2.190"),
+					},
+				},
+				{
+					Type:     types.BundledOSPkgs,
+					FilePath: orjsonSBOMPath,
+					Packages: types.Packages{
+						{
+							ID:         "libgcc@8.5.0-28.el8_10.alma.1",
+							Name:       "libgcc",
+							Version:    "8.5.0",
+							Release:    "28.el8_10.alma.1",
+							SrcName:    "libgcc",
+							SrcVersion: "8.5.0",
+							SrcRelease: "28.el8_10.alma.1",
+							Identifier: types.PkgIdentifier{
+								PURL: &packageurl.PackageURL{
+									Type:      packageurl.TypeRPM,
+									Namespace: "almalinux",
+									Name:      "libgcc",
+									Version:   "8.5.0-28.el8_10.alma.1",
+								},
+							},
+							FilePath: orjsonSBOMPath,
+						},
 					},
 				},
 			},
@@ -253,14 +277,14 @@ func Test_packagingAnalyzer_PEP770(t *testing.T) {
 			},
 		},
 		{
-			name: "SBOM without crates adds no application",
+			name: "SBOM without crates or OS packages adds no application",
 			files: fstest.MapFS{
 				orjsonMetadataPath: {Data: []byte(orjsonMetadata)},
 				"site-packages/orjson-3.13.0.dist-info/sboms/auditwheel.cdx.json": {Data: []byte(`{
 					"bomFormat": "CycloneDX",
 					"specVersion": "1.4",
 					"components": [
-						{"type": "library", "bom-ref": "libgcc", "name": "libgcc", "version": "8.5.0-28.el8_10.alma.1", "purl": "pkg:rpm/almalinux/libgcc@8.5.0-28.el8_10.alma.1"}
+						{"type": "library", "bom-ref": "vendored", "name": "vendored", "version": "1.0.0", "purl": "pkg:generic/vendored@1.0.0"}
 					]
 				}`)},
 			},

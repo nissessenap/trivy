@@ -53,6 +53,13 @@ func (a packagingAnalyzer) sbomApps(fsys fs.FS, distInfoDir string) []types.Appl
 				Packages: crates,
 			})
 		}
+		if pkgs := osPackages(bom, sbomPath); len(pkgs) > 0 {
+			apps = append(apps, types.Application{
+				Type:     types.BundledOSPkgs,
+				FilePath: sbomPath,
+				Packages: pkgs,
+			})
+		}
 	}
 	return apps
 }
@@ -101,6 +108,27 @@ func cargoPackages(bom *cdx.BOM, sbomPath string) types.Packages {
 	}
 	sort.Sort(pkgs)
 	// Cargo can resolve the same name and version from more than one source.
+	return slices.CompactFunc(pkgs, func(a, b types.Package) bool { return a.ID == b.ID })
+}
+
+// osPackages returns the OS packages whose libraries auditwheel copied into the wheel.
+// They come from the OS of the image the wheel was built on, not from the scanned target.
+func osPackages(bom *cdx.BOM, sbomPath string) types.Packages {
+	var pkgs types.Packages
+	for _, c := range lo.FromPtr(bom.Components) {
+		p, err := purl.FromString(c.PackageURL)
+		if err != nil || p.Version == "" ||
+			!slices.Contains([]string{packageurl.TypeRPM, packageurl.TypeDebian, packageurl.TypeApk}, p.Type) {
+			continue
+		}
+		pkg := p.Package()
+		// The SBOM names binary packages only; same fallback as the SBOM decoder.
+		pkg.SrcName, pkg.SrcVersion, pkg.SrcRelease, pkg.SrcEpoch = pkg.Name, pkg.Version, pkg.Release, pkg.Epoch
+		pkg.FilePath = sbomPath
+		pkgs = append(pkgs, *pkg)
+	}
+	sort.Sort(pkgs)
+	// auditwheel lists a package once per library copied from it.
 	return slices.CompactFunc(pkgs, func(a, b types.Package) bool { return a.ID == b.ID })
 }
 
