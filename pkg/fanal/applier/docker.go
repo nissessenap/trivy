@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -297,11 +298,7 @@ func ApplyLayers(layers []ftypes.BlobInfo) ftypes.ArtifactDetail {
 
 	// De-duplicate same debian packages from different dirs
 	// cf. https://github.com/aquasecurity/trivy/issues/8297
-	mergedLayer.Packages = xslices.ZeroToNil(lo.UniqBy(mergedLayer.Packages, func(pkg ftypes.Package) string {
-		id := cmp.Or(pkg.ID, fmt.Sprintf("%s@%s", pkg.Name, utils.FormatVersion(pkg)))
-		// To avoid deduplicating packages with the same ID but from different locations (e.g. RPM archives), check the file path.
-		return fmt.Sprintf("%s/%s", id, pkg.FilePath)
-	}))
+	mergedLayer.Packages = xslices.ZeroToNil(lo.UniqBy(mergedLayer.Packages, pkgLocationKey))
 
 	for _, app := range mergedLayer.Applications {
 		for i, pkg := range app.Packages {
@@ -364,6 +361,9 @@ func aggregate(detail *ftypes.ArtifactDetail) {
 		aggregatedApps[t] = &ftypes.Application{Type: t}
 	}
 
+	// Sort by file path so that the same copy of a duplicated package is kept on every run.
+	sort.Sort(detail.Applications)
+
 	for _, app := range detail.Applications {
 		a, ok := aggregatedApps[app.Type]
 		if !ok {
@@ -375,12 +375,22 @@ func aggregate(detail *ftypes.ArtifactDetail) {
 
 	for _, app := range aggregatedApps {
 		if len(app.Packages) > 0 {
+			// Packages without a file path (e.g. from SBOM files) lose their origin here,
+			// so the same package found in several places would otherwise be reported more than once.
+			app.Packages = lo.UniqBy(app.Packages, pkgLocationKey)
 			apps = append(apps, *app)
 		}
 	}
 
 	// Overwrite Applications
 	detail.Applications = apps
+}
+
+// pkgLocationKey identifies a package by its ID and file path, so that packages with the same ID
+// but from different locations (e.g. RPM archives) are not deduplicated.
+func pkgLocationKey(pkg ftypes.Package) string {
+	id := cmp.Or(pkg.ID, fmt.Sprintf("%s@%s", pkg.Name, utils.FormatVersion(pkg)))
+	return fmt.Sprintf("%s/%s", id, pkg.FilePath)
 }
 
 // We must save secrets from all layers even though they are removed in the uppler layer.

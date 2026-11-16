@@ -1531,6 +1531,103 @@ func TestApplyLayers(t *testing.T) {
 			},
 		},
 		{
+			name: "same package from multiple SBOM files is aggregated once",
+			inputLayers: []types.BlobInfo{
+				{
+					SchemaVersion: 1,
+					Digest:        "sha256:932da51564135c98a49a34a193d6cd363d8fa4184d957fde16c9d8527b3f3b02",
+					DiffID:        "sha256:a187dde48cd289ac374ad8539930628314bc581a481cdb41409c9289419ddb72",
+					Applications: []types.Application{
+						{
+							Type:     types.PythonPkg,
+							FilePath: "env2/site-packages/pip/_vendor/bom.cdx.json",
+							Packages: types.Packages{
+								{
+									ID:      "idna@3.18",
+									Name:    "idna",
+									Version: "3.18",
+									Identifier: types.PkgIdentifier{
+										BOMRef: "pkg:pypi/idna@3.18",
+									},
+								},
+							},
+						},
+						{
+							Type:     types.PythonPkg,
+							FilePath: "env1/site-packages/pip/_vendor/bom.cdx.json",
+							Packages: types.Packages{
+								{
+									ID:      "idna@3.18",
+									Name:    "idna",
+									Version: "3.18",
+									Identifier: types.PkgIdentifier{
+										BOMRef: "pkg:pypi/idna@3.18",
+									},
+								},
+							},
+						},
+						{
+							Type: types.PythonPkg,
+							Packages: types.Packages{
+								{
+									// Installed copy of the same package: kept, since its location differs.
+									ID:       "idna@3.18",
+									Name:     "idna",
+									Version:  "3.18",
+									FilePath: "env1/site-packages/idna-3.18.dist-info/METADATA",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: types.ArtifactDetail{
+				Applications: []types.Application{
+					{
+						Type: types.PythonPkg,
+						Packages: types.Packages{
+							{
+								ID:      "idna@3.18",
+								Name:    "idna",
+								Version: "3.18",
+								Layer: types.Layer{
+									Digest: "sha256:932da51564135c98a49a34a193d6cd363d8fa4184d957fde16c9d8527b3f3b02",
+									DiffID: "sha256:a187dde48cd289ac374ad8539930628314bc581a481cdb41409c9289419ddb72",
+								},
+								Identifier: types.PkgIdentifier{
+									UID:    "3f5b1d0555db48c6", // from env1, regardless of the input order
+									BOMRef: "pkg:pypi/idna@3.18",
+									PURL: &packageurl.PackageURL{
+										Type:    packageurl.TypePyPi,
+										Name:    "idna",
+										Version: "3.18",
+									},
+								},
+							},
+							{
+								ID:       "idna@3.18",
+								Name:     "idna",
+								Version:  "3.18",
+								FilePath: "env1/site-packages/idna-3.18.dist-info/METADATA",
+								Layer: types.Layer{
+									Digest: "sha256:932da51564135c98a49a34a193d6cd363d8fa4184d957fde16c9d8527b3f3b02",
+									DiffID: "sha256:a187dde48cd289ac374ad8539930628314bc581a481cdb41409c9289419ddb72",
+								},
+								Identifier: types.PkgIdentifier{
+									UID: "e9a986eb05a6426",
+									PURL: &packageurl.PackageURL{
+										Type:    packageurl.TypePyPi,
+										Name:    "idna",
+										Version: "3.18",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "cryptographic assets replaced in an upper layer",
 			inputLayers: []types.BlobInfo{
 				{
